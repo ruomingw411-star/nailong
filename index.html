@@ -100,6 +100,21 @@
     .chat { height: max(370px, 60dvh); min-height: 0; }
   }
   @media (prefers-reduced-motion: reduce) { .pet.hop, .eye { animation: none; } }
+
+  .pet.is-laughing .eye {
+    top: 43px;
+    height: 17px;
+    background: none;
+    border-top: 4px solid #526235;
+    animation: none;
+  }
+  .pet.is-laughing .eye::after { display: none; }
+  .pet.is-laughing .smile {
+    top: 72px; left: 57px; width: 41px; height: 24px;
+    border-radius: 30% 30% 55% 55% / 24% 24% 76% 76%;
+    background: radial-gradient(ellipse at 50% 110%, #ee9a83 36%, transparent 38%), #65401e;
+    clip-path: none;
+  }
 </style>
 </head>
 <body>
@@ -186,13 +201,43 @@
     byId('dragon').hidden = true;
   });
   portrait.src = './nailong.jpeg';
+  const reaction = byId('pet-reaction');
+  const laughAudio = new Audio('./nailong-laugh.mp4');
+  laughAudio.preload = 'none';
+  const tapWindowMs = 1000;
+  const laughDurationMs = 1200;
+  let tapCount = 0;
+  let firstTapTime = 0;
+
   pet.addEventListener('click', () => {
     pet.classList.remove('hop');
     void pet.offsetWidth;
     pet.classList.add('hop');
-    const reaction = byId('pet-reaction');
-    reaction.textContent = reaction.textContent === '嘿嘿，再来一下'
-      ? '奶龙蹦了一下！' : '嘿嘿，再来一下';
+    if (pet.classList.contains('is-laughing')) return;
+
+    const now = performance.now();
+    if (tapCount === 0 || now - firstTapTime > tapWindowMs) {
+      firstTapTime = now;
+      tapCount = 0;
+    }
+
+    tapCount += 1;
+    if (tapCount < 3) {
+      reaction.textContent = tapCount === 1 ? '嘿嘿，再来一下' : '再摸一下就笑啦！';
+      return;
+    }
+
+    tapCount = 0;
+    pet.classList.add('is-laughing');
+    reaction.textContent = '哈哈哈！';
+    laughAudio.currentTime = 0;
+    laughAudio.play().catch(() => {
+      // Keep the expression available when the recording cannot play.
+    });
+    setTimeout(() => {
+      pet.classList.remove('is-laughing');
+      reaction.textContent = '点我摸摸头';
+    }, laughDurationMs);
   });
   function clearPhoto() {
     photoSelection += 1;
