@@ -256,5 +256,86 @@
     }
   });
 </script>
+ <style>
+
+  .eye {
+
+    background: radial-gradient(ellipse at 45% 35%, #afc783, #829b51);
+
+    overflow: hidden;
+
+  }
+
+  .eye::after {
+
+    content: "";
+
+    position: absolute;
+
+    top: 50%;
+
+    left: 50%;
+
+    width: 17px;
+
+    height: 19px;
+
+    border-radius: 50%;
+
+    background: #151a10;
+
+    transform: translate(
+
+      calc(-50% + var(--gaze-x, 0px)),
+
+      calc(-50% + var(--gaze-y, 0px))
+
+    );
+
+    transition: transform 160ms ease-out;
+
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .eye::after { transition: none; }
+
+  }
+
+</style>
+
+<script>
+
+  (() => {
+
+    const eyes = document.querySelectorAll('#dragon .eye');
+
+    document.addEventListener('click', event => {
+
+      // 键盘触发的点击没有屏幕坐标。
+
+      if (event.detail === 0) return;
+
+      for (const eye of eyes) {
+
+        const bounds = eye.getBoundingClientRect();
+
+        const dx = event.clientX - (bounds.left + bounds.width / 2);
+
+        const dy = event.clientY - (bounds.top + bounds.height / 2);
+
+        const distance = Math.max(18, Math.hypot(dx, dy));
+
+        eye.style.setProperty('--gaze-x', `${5 * dx / distance}px`);
+
+        eye.style.setProperty('--gaze-y', `${6 * dy / distance}px`);
+
+      }
+
+    }, { capture: true });
+
+  })();
+
+</script>
 </body>
 </html>
