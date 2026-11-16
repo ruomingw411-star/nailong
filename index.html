@@ -1,0 +1,260 @@
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fff8e5">
+<title>奶龙</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100dvh; padding: clamp(12px, 4vw, 48px);
+    display: grid; place-items: center; background: #fff8e5; color: #2d3025;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+  }
+  button, textarea { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, textarea:focus-visible {
+    outline: 3px solid #526c3f; outline-offset: 3px;
+  }
+  main {
+    width: min(100%, 1050px); display: grid; grid-template-columns: 2fr 3fr;
+    border: 1px solid #eadcbf; border-radius: 30px; overflow: hidden;
+    background: #fffef9; box-shadow: 0 18px 60px #7a552619;
+  }
+  .room {
+    min-height: 340px; display: grid; justify-items: center; align-content: center;
+    gap: 12px; padding: 24px; background: radial-gradient(#ffefad, #fbdf85);
+    text-align: center;
+  }
+  h1, h2, p { margin: 0; }
+  h1 { font-size: 2.35rem; letter-spacing: .12em; }
+  .pet { border: 0; background: transparent; padding: 12px; border-radius: 30px; }
+  .pet.hop { animation: hop .45s ease; }
+  @keyframes hop { 45% { transform: translateY(-17px) rotate(-5deg); } }
+  .pet-photo { width: 180px; height: 190px; object-fit: contain; border-radius: 28px; }
+  [hidden] { display: none !important; }
+  .dragon {
+    display: block; position: relative; width: 155px; height: 165px;
+    border-radius: 46% 46% 39% 39% / 54% 54% 40% 40%;
+    background: radial-gradient(ellipse at 38% 24%, #ffeb87, #f6bc40 74%);
+    box-shadow: inset -9px -10px 20px #cc811d35, 0 20px 16px -15px #9f681b70;
+    margin: 0 auto 10px;
+  }
+  .dragon::before, .dragon::after {
+    content: ""; position: absolute; bottom: -8px; width: 43px; height: 28px;
+    background: #eaaa32; border-radius: 45%; z-index: 0;
+  }
+  .dragon::before { left: 24px; }
+  .dragon::after { right: 24px; }
+  .eye {
+    position: absolute; top: 37px; width: 29px; height: 34px;
+    border-radius: 50%; background: radial-gradient(circle at 55% 59%, #151a10 43%, #94ad61 47%);
+    animation: blink 6s infinite;
+  }
+  .eye.left { left: 37px; }
+  .eye.right { right: 37px; }
+  @keyframes blink { 47%, 51% { transform: scaleY(1); } 49% { transform: scaleY(.08); } }
+  .smile {
+    position: absolute; top: 66px; left: 56px; width: 43px; height: 16px;
+    border-bottom: 3px solid #65401e; border-radius: 50%;
+  }
+  .chat {
+    min-width: 0; height: min(72dvh, 690px); min-height: 430px;
+    display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  header { padding: 18px 22px; border-bottom: 1px solid #efe8d8; }
+  header h2 { font-size: 1.12rem; }
+  header p { font-size: .86rem; color: #626553; }
+  #messages { overflow: auto; padding: 18px 22px; }
+  .message {
+    width: fit-content; max-width: 87%; margin: 0 0 12px;
+    padding: 9px 13px; border-radius: 16px 16px 16px 5px;
+    background: #f2f4e8; overflow-wrap: anywhere; white-space: pre-wrap;
+  }
+  .message.mine { margin-left: auto; background: #ffe59d; border-radius: 16px 16px 5px 16px; }
+  .message img {
+    display: block; max-width: 100%; max-height: 210px;
+    object-fit: contain; border-radius: 9px;
+  }
+  form { border-top: 1px solid #efe8d8; padding: 12px 16px; }
+  .compose { display: flex; align-items: end; gap: 8px; }
+  textarea {
+    min-width: 0; flex: 1; resize: vertical; min-height: 46px; max-height: 125px;
+    padding: 10px; border-radius: 13px; border: 1px solid #dfd8c7; background: white;
+  }
+  .action {
+    min-height: 46px; padding: 0 13px; border-radius: 13px; border: 0;
+    background: #f2eddf; color: inherit;
+  }
+  .send { background: #f3ca60; font-weight: 700; }
+  #attachment { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  #thumbnail { width: 48px; height: 48px; object-fit: cover; border-radius: 8px; }
+  #status { font-size: .84rem; color: #626553; }
+  #status:empty { display: none; }
+  @media (max-width: 640px) {
+    main { grid-template-columns: 1fr; }
+    .room { min-height: 0; padding: 12px 16px; gap: 4px; }
+    h1 { font-size: 1.7rem; }
+    .pet { zoom: .58; }
+    .chat { height: max(370px, 60dvh); min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pet.hop, .eye { animation: none; } }
+</style>
+</head>
+<body>
+<main>
+  <section class="room" aria-labelledby="name">
+    <button class="pet" id="pet" type="button" aria-label="摸摸奶龙">
+      <img class="pet-photo" id="pet-photo" alt="" hidden>
+      <span class="dragon" id="dragon" aria-hidden="true">
+        <span class="eye left"></span><span class="eye right"></span>
+        <span class="smile"></span>
+      </span>
+    </button>
+    <h1 id="name">奶龙</h1>
+    <p id="pet-reaction" aria-live="polite">点我摸摸头</p>
+  </section>
+  <section class="chat" aria-labelledby="chat-title">
+    <header>
+      <h2 id="chat-title">和奶龙聊天</h2>
+      <p>演示模式 · 照片和聊天存在当前浏览器</p>
+    </header>
+    <div id="messages" role="log" aria-label="聊天记录" aria-live="polite"></div>
+    <form id="composer">
+      <div id="attachment" hidden>
+        <img id="thumbnail" alt="待发送的照片">
+        <button class="action" id="remove" type="button">移除照片</button>
+      </div>
+      <div class="compose">
+        <input id="photo" type="file" accept="image/*" hidden>
+        <button class="action" id="pick" type="button">照片</button>
+        <textarea id="draft" rows="1" maxlength="1000"
+          aria-label="聊天消息" placeholder="跟奶龙说点什么…"></textarea>
+        <button class="action send" type="submit">发送</button>
+      </div>
+      <p id="status" role="status"></p>
+    </form>
+  </section>
+</main>
+<script>
+  const storageKey = 'nailong-chat-v1';
+  const byId = id => document.getElementById(id);
+  const messages = byId('messages');
+  const draft = byId('draft');
+  const photo = byId('photo');
+  const status = byId('status');
+  let pendingPhoto = '';
+  let photoSelection = 0;
+  let chat = [{ text: '嗨，我是奶龙！今天有什么想跟我分享的吗？' }];
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    if (Array.isArray(saved) && saved.length) chat = saved;
+  } catch {}
+  function showMessage(message) {
+    const bubble = document.createElement('div');
+    bubble.className = message.mine ? 'message mine' : 'message';
+    bubble.setAttribute('aria-label', message.mine ? '你的消息' : '奶龙的消息');
+    if (message.text) bubble.textContent = message.text;
+    if (message.image) {
+      const image = document.createElement('img');
+      image.alt = '你分享的照片';
+      image.src = message.image;
+      image.addEventListener('load', () => {
+        if (image.dataset.follow) messages.scrollTop = messages.scrollHeight;
+      }, { once: true });
+      bubble.append(image);
+      image.dataset.follow = 'true';
+    }
+    messages.append(bubble);
+    messages.scrollTop = messages.scrollHeight;
+  }
+  function addMessage(message) {
+    chat.push(message);
+    showMessage(message);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(chat));
+    } catch {
+      status.textContent = '浏览器存储空间不足，本次新消息可能无法在刷新后保留。';
+    }
+  }
+  chat.forEach(showMessage);
+  const pet = byId('pet');
+  const portrait = byId('pet-photo');
+  portrait.addEventListener('load', () => {
+    portrait.hidden = false;
+    byId('dragon').hidden = true;
+  });
+  portrait.src = './nailong.jpeg';
+  pet.addEventListener('click', () => {
+    pet.classList.remove('hop');
+    void pet.offsetWidth;
+    pet.classList.add('hop');
+    const reaction = byId('pet-reaction');
+    reaction.textContent = reaction.textContent === '嘿嘿，再来一下'
+      ? '奶龙蹦了一下！' : '嘿嘿，再来一下';
+  });
+  function clearPhoto() {
+    photoSelection += 1;
+    pendingPhoto = '';
+    photo.value = '';
+    byId('thumbnail').removeAttribute('src');
+    byId('attachment').hidden = true;
+  }
+  byId('pick').addEventListener('click', () => photo.click());
+  byId('remove').addEventListener('click', clearPhoto);
+  photo.addEventListener('change', async () => {
+    const file = photo.files[0];
+    if (!file) return;
+    const selection = ++photoSelection;
+    let url;
+    try {
+      url = URL.createObjectURL(file);
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      if (selection !== photoSelection) return;
+      const scale = Math.min(1, 800 / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+      pendingPhoto = canvas.toDataURL('image/jpeg', 0.78);
+      byId('thumbnail').src = pendingPhoto;
+      byId('attachment').hidden = false;
+      status.textContent = '';
+    } catch {
+      if (selection === photoSelection) {
+        status.textContent = '这张照片打不开，试试 JPEG 或 PNG。';
+      }
+    } finally {
+      if (url) URL.revokeObjectURL(url);
+    }
+  });
+  byId('composer').addEventListener('submit', event => {
+    event.preventDefault();
+    const text = draft.value.trim();
+    const image = pendingPhoto;
+    if (!text && !image) return;
+    status.textContent = '';
+    addMessage({ text, image, mine: true });
+    draft.value = '';
+    clearPhoto();
+    let reply = '奶龙在听。今天有没有一件小事，让你特别想讲给我听？';
+    if (image) {
+      reply = '照片收到啦！你最想让我留意照片里的哪里？';
+    } else if (/猫|咪/.test(text)) {
+      reply = '说到猫猫，我想听听它今天干了什么。';
+    } else if (/累|困/.test(text)) {
+      reply = '奶龙来你旁边坐一小会儿。想聊聊今天最累的是哪件事吗？';
+    }
+    setTimeout(() => addMessage({ text: reply }), 500);
+  });
+  draft.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      byId('composer').requestSubmit();
+    }
+  });
+</script>
+</body>
+</html>
