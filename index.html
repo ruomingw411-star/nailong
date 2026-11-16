@@ -56,7 +56,8 @@
   @keyframes blink { 47%, 51% { transform: scaleY(1); } 49% { transform: scaleY(.08); } }
   .smile {
     position: absolute; top: 66px; left: 56px; width: 43px; height: 16px;
-    border-bottom: 3px solid #65401e; border-radius: 50%;
+    background: #65401e;
+    clip-path: path("M 0 8 Q 21.5 18 43 8 Q 21.5 24 0 8 Z");
   }
   .chat {
     min-width: 0; height: min(72dvh, 690px); min-height: 430px;
