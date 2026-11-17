@@ -270,6 +270,37 @@
       if (url) URL.revokeObjectURL(url);
     }
   });
+  const memoryKey = 'nailong-memory-v1';
+
+  function memoryReply(text) {
+    const fact = text.match(/^记住(?:一下)?[：:\s，,]*(.*)$/s)?.[1]?.trim();
+    const recall = /^(?:你)?记住了什么[？?]?$/.test(text);
+    const clear = /^清除记忆[。！!！]?$/.test(text);
+    if (fact === undefined && !recall && !clear) return null;
+    if (fact === '') return '试试说「记住：我家猫换了新窝」。';
+
+    try {
+      if (clear) {
+        localStorage.removeItem(memoryKey);
+        return '奶龙的小本本已经清空了。';
+      }
+      const saved = JSON.parse(localStorage.getItem(memoryKey) ?? '[]');
+      const facts = Array.isArray(saved) ? saved.filter(item => typeof item === 'string') : [];
+      if (recall) {
+        return facts.length
+          ? '奶龙的小本本记着：\n' + facts.map(item => '· ' + item).join('\n')
+          : '奶龙的小本本还是空的。试试说「记住：我家猫换了新窝」。';
+      }
+      if (!facts.includes(fact)) {
+        facts.push(fact);
+        localStorage.setItem(memoryKey, JSON.stringify(facts));
+      }
+      return '记住啦：' + fact;
+    } catch {
+      return '奶龙现在打不开小本本，浏览器可能限制了存储。';
+    }
+  }
+
   byId('composer').addEventListener('submit', event => {
     event.preventDefault();
     const text = draft.value.trim();
@@ -280,7 +311,10 @@
     draft.value = '';
     clearPhoto();
     let reply = '奶龙在听。今天有没有一件小事，让你特别想讲给我听？';
-    if (image) {
+    const remembered = memoryReply(text);
+    if (remembered !== null) {
+      reply = remembered;
+    } else if (image) {
       reply = '照片收到啦！你最想让我留意照片里的哪里？';
     } else if (/猫|咪/.test(text)) {
       reply = '说到猫猫，我想听听它今天干了什么。';
