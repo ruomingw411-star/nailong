@@ -231,10 +231,13 @@
 
       const editButton = action('编辑', () => toggleEditor(true));
       const withdrawButton = action('撤回', () => {
-        const updatedChat = chat.filter(item => item !== message);
+        const belongsToMessage = item => item === message || item.replyTo === message.id;
+        const updatedChat = chat.filter(item => !belongsToMessage(item));
         if (!saveChat(updatedChat)) return;
+        for (const item of chat.filter(belongsToMessage)) {
+          messageBubbles.get(item)?.remove();
+        }
         chat = updatedChat;
-        bubble.remove();
         status.textContent = '消息已撤回。';
       });
       const saveButton = action('保存', () => {
@@ -258,6 +261,7 @@
       cancelButton.hidden = true;
     }
 
+    messageBubbles.set(message, bubble);
     messages.append(bubble);
     messages.scrollTop = messages.scrollHeight;
   }
@@ -276,6 +280,35 @@
     chat.push(message);
     showMessage(message);
     saveChat(chat);
+  }
+  function demoReply(text, image) {
+    let reply = '奶龙在听。今天有没有一件小事，让你特别想讲给我听？';
+    if (image) {
+      reply = '照片收到啦！你最想让我留意照片里的哪里？';
+    } else if (/猫|咪/.test(text)) {
+      reply = '说到猫猫，我想听听它今天干了什么。';
+    } else if (/累|困/.test(text)) {
+      reply = '奶龙来你旁边坐一小会儿。想聊聊今天最累的是哪件事吗？';
+    }
+    return reply;
+  }
+
+  const messageBubbles = new WeakMap();
+
+  // Older conversations have no reply links. Match only the known demo replies.
+  let nextMessageId = chat.reduce((max, message) => Math.max(max, message.id || 0), 0);
+  const legacyPending = [];
+  for (const message of chat) {
+    if (message.mine && message.id === undefined) {
+      message.id = ++nextMessageId;
+      legacyPending.push(message);
+    } else if (!message.mine && message.replyTo === undefined) {
+      const index = legacyPending.findIndex(sent =>
+        demoReply(sent.text ?? '', sent.image) === message.text);
+      if (index !== -1) {
+        message.replyTo = legacyPending.splice(index, 1)[0].id;
+      }
+    }
   }
   chat.forEach(showMessage);
   const pet = byId('pet');
@@ -415,24 +448,16 @@
     const image = pendingPhoto;
     if (!text && !image) return;
     status.textContent = '';
-    const sent = { text, image, mine: true };
+    const sent = { id: ++nextMessageId, text, image, mine: true };
     addMessage(sent);
     draft.value = '';
     clearPhoto();
-    let reply = '奶龙在听。今天有没有一件小事，让你特别想讲给我听？';
-    const remembered = memoryReply(text);
-    if (remembered !== null) {
-      reply = remembered;
-    } else if (image) {
-      reply = '照片收到啦！你最想让我留意照片里的哪里？';
-    } else if (/猫|咪/.test(text)) {
-      reply = '说到猫猫，我想听听它今天干了什么。';
-    } else if (/累|困/.test(text)) {
-      reply = '奶龙来你旁边坐一小会儿。想聊聊今天最累的是哪件事吗？';
-    }
+    const reply = memoryReply(text) ?? demoReply(text, image);
     const version = chatVersion;
     setTimeout(() => {
-      if (version === chatVersion && chat.includes(sent)) addMessage({ text: reply });
+      if (version === chatVersion && chat.includes(sent)) {
+        addMessage({ text: reply, replyTo: sent.id });
+      }
     }, 500);
   });
   draft.addEventListener('keydown', event => {
