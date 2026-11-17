@@ -58,6 +58,7 @@
     display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
   }
   header { padding: 18px 22px; border-bottom: 1px solid #efe8d8; }
+  .chat-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
   header h2 { font-size: 1.12rem; }
   header p { font-size: .86rem; color: #626553; }
   #messages { overflow: auto; padding: 18px 22px; }
@@ -126,8 +127,13 @@
   </section>
   <section class="chat" aria-labelledby="chat-title">
     <header>
-      <h2 id="chat-title">和奶龙聊天</h2>
-      <p>演示模式 · 照片和聊天存在当前浏览器</p>
+      <div class="chat-heading">
+        <div>
+          <h2 id="chat-title">和奶龙聊天</h2>
+          <p>演示模式 · 照片和聊天存在当前浏览器</p>
+        </div>
+        <button class="action" id="reset-chat" type="button">重置全部</button>
+      </div>
     </header>
     <div id="messages" role="log" aria-label="聊天记录" aria-live="polite"></div>
     <form id="composer">
@@ -155,7 +161,9 @@
   const status = byId('status');
   let pendingPhoto = '';
   let photoSelection = 0;
-  let chat = [{ text: '嗨，我是奶龙！今天有什么想跟我分享的吗？' }];
+  const welcomeMessage = { text: '嗨，我是奶龙！今天有什么想跟我分享的吗？' };
+  let chat = [welcomeMessage];
+  let chatVersion = 0;
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (Array.isArray(saved) && saved.length) chat = saved;
@@ -301,6 +309,24 @@
     }
   }
 
+  byId('reset-chat').addEventListener('click', () => {
+    try {
+      localStorage.removeItem(memoryKey);
+      localStorage.removeItem(storageKey);
+    } catch {
+      status.textContent = '浏览器暂时无法清除记录，请重试。';
+      return;
+    }
+
+    chatVersion += 1;
+    chat = [welcomeMessage];
+    draft.value = '';
+    clearPhoto();
+    messages.replaceChildren();
+    showMessage(welcomeMessage);
+    status.textContent = '聊天和记忆已清空。';
+  });
+
   byId('composer').addEventListener('submit', event => {
     event.preventDefault();
     const text = draft.value.trim();
@@ -321,7 +347,10 @@
     } else if (/累|困/.test(text)) {
       reply = '奶龙来你旁边坐一小会儿。想聊聊今天最累的是哪件事吗？';
     }
-    setTimeout(() => addMessage({ text: reply }), 500);
+    const version = chatVersion;
+    setTimeout(() => {
+      if (version === chatVersion) addMessage({ text: reply });
+    }, 500);
   });
   draft.addEventListener('keydown', event => {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
