@@ -127,15 +127,7 @@
   <section class="chat" aria-labelledby="chat-title">
     <header>
       <h2 id="chat-title">和奶龙聊天</h2>
-      <p id="chat-mode">演示模式 · 照片和聊天存在当前浏览器</p>
-      <details id="qwen-settings">
-        <summary>连接千问</summary>
-        <label>后端地址 <input id="qwen-address" type="url" placeholder="https://…/chat"></label>
-        <label>访问码 <input id="qwen-code" type="password" autocomplete="off"></label>
-        <button type="button" id="qwen-connect">启用</button>
-        <button type="button" id="qwen-disconnect">关闭</button>
-        <p>启用后，本次连接的近期文字对话会发送给模型。</p>
-      </details>
+      <p>演示模式 · 照片和聊天存在当前浏览器</p>
     </header>
     <div id="messages" role="log" aria-label="聊天记录" aria-live="polite"></div>
     <form id="composer">
@@ -309,67 +301,11 @@
     }
   }
 
-  let qwenConnection = null;
-  let waitingForQwen = false;
-  const demoMode = '演示模式 · 照片和聊天存在当前浏览器';
-
-  byId('qwen-connect').addEventListener('click', () => {
-    try {
-      const address = new URL(byId('qwen-address').value.trim());
-      const code = byId('qwen-code').value.trim();
-      if (address.protocol !== 'https:' || address.pathname !== '/chat' ||
-          address.username || address.password || !code) throw new Error();
-      qwenConnection = { address: address.href, code, messages: [] };
-      byId('qwen-code').value = '';
-      byId('qwen-settings').open = false;
-      byId('chat-mode').textContent = '千问模式 · 文字聊天';
-      status.textContent = '';
-    } catch {
-      status.textContent = '请输入以 /chat 结尾的 HTTPS 后端地址和访问码。';
-    }
-  });
-
-  byId('qwen-disconnect').addEventListener('click', () => {
-    qwenConnection = null;
-    byId('chat-mode').textContent = demoMode;
-    status.textContent = '';
-  });
-
-  async function askQwen(connection, text) {
-    const messages = [...connection.messages, { role: 'user', content: text }].slice(-12);
-    waitingForQwen = true;
-    status.textContent = '奶龙在想…';
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(connection.address, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + connection.code },
-        body: JSON.stringify({ messages }),
-      });
-      const data = await response.json();
-      if (connection !== qwenConnection) return;
-      if (!response.ok || typeof data.reply !== 'string' || !data.reply.trim()) {
-        status.textContent = typeof data.error === 'string' ? data.error : '千问暂时没有回答。';
-        return;
-      }
-      connection.messages = [...messages, { role: 'assistant', content: data.reply.slice(0, 1000) }];
-      status.textContent = '';
-      addMessage({ text: data.reply });
-    } catch {
-      if (connection === qwenConnection) status.textContent = '连接千问失败，请检查后端地址后再试。';
-    } finally {
-      clearTimeout(timer);
-      waitingForQwen = false;
-    }
-  }
-
   byId('composer').addEventListener('submit', event => {
     event.preventDefault();
     const text = draft.value.trim();
     const image = pendingPhoto;
-    if ((!text && !image) || waitingForQwen) return;
+    if (!text && !image) return;
     status.textContent = '';
     addMessage({ text, image, mine: true });
     draft.value = '';
@@ -378,9 +314,6 @@
     const remembered = memoryReply(text);
     if (remembered !== null) {
       reply = remembered;
-    } else if (qwenConnection && text && !image) {
-      void askQwen(qwenConnection, text);
-      return;
     } else if (image) {
       reply = '照片收到啦！你最想让我留意照片里的哪里？';
     } else if (/猫|咪/.test(text)) {
