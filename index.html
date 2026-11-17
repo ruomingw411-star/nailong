@@ -68,6 +68,14 @@
     background: #f2f4e8; overflow-wrap: anywhere; white-space: pre-wrap;
   }
   .message.mine { margin-left: auto; background: #ffe59d; border-radius: 16px 16px 5px 16px; }
+  .message-actions {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+  }
+  .message-actions button {
+    min-height: 32px; padding: 3px 9px; border: 0; border-radius: 8px;
+    background: #ffffff70; color: #514223; font-size: .85rem;
+  }
+  .message-edit { display: block; width: 100%; margin-top: 6px; }
   .message img {
     display: block; max-width: 100%; max-height: 210px;
     object-fit: contain; border-radius: 9px;
@@ -172,7 +180,10 @@
     const bubble = document.createElement('div');
     bubble.className = message.mine ? 'message mine' : 'message';
     bubble.setAttribute('aria-label', message.mine ? '你的消息' : '奶龙的消息');
-    if (message.text) bubble.textContent = message.text;
+    const words = document.createElement('div');
+    words.textContent = message.text ?? '';
+    words.hidden = !message.text;
+    bubble.append(words);
     if (message.image) {
       const image = document.createElement('img');
       image.alt = '你分享的照片';
@@ -183,17 +194,88 @@
       bubble.append(image);
       image.dataset.follow = 'true';
     }
+    if (message.mine) {
+      const actions = document.createElement('div');
+      actions.className = 'message-actions';
+      const editor = document.createElement('textarea');
+      editor.className = 'message-edit';
+      editor.rows = 2;
+      editor.maxLength = draft.maxLength;
+      editor.setAttribute('aria-label', '编辑已发出的消息');
+      editor.hidden = true;
+      bubble.append(editor, actions);
+
+      function action(label, onClick) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.addEventListener('click', onClick);
+        actions.append(button);
+        return button;
+      }
+
+      function toggleEditor(open) {
+        editor.hidden = !open;
+        words.hidden = open || !message.text;
+        editButton.hidden = open;
+        withdrawButton.hidden = open;
+        saveButton.hidden = !open;
+        cancelButton.hidden = !open;
+        if (open) {
+          editor.value = message.text ?? '';
+          editor.focus();
+        } else {
+          editButton.focus();
+        }
+      }
+
+      const editButton = action('编辑', () => toggleEditor(true));
+      const withdrawButton = action('撤回', () => {
+        const updatedChat = chat.filter(item => item !== message);
+        if (!saveChat(updatedChat)) return;
+        chat = updatedChat;
+        bubble.remove();
+        status.textContent = '消息已撤回。';
+      });
+      const saveButton = action('保存', () => {
+        const updatedText = editor.value.trim();
+        if (!updatedText && !message.image) {
+          status.textContent = '请输入文字，或取消编辑后点「撤回」。';
+          return;
+        }
+        const updatedChat = chat.map(item => item === message ? { ...item, text: updatedText } : item);
+        if (!saveChat(updatedChat)) return;
+        message.text = updatedText;
+        words.textContent = updatedText;
+        toggleEditor(false);
+        status.textContent = '消息已修改。';
+      });
+      const cancelButton = action('取消', () => {
+        toggleEditor(false);
+        status.textContent = '';
+      });
+      saveButton.hidden = true;
+      cancelButton.hidden = true;
+    }
+
     messages.append(bubble);
     messages.scrollTop = messages.scrollHeight;
   }
+
+  function saveChat(updatedChat) {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(updatedChat));
+      return true;
+    } catch {
+      status.textContent = '浏览器暂时无法保存聊天记录。';
+      return false;
+    }
+  }
+
   function addMessage(message) {
     chat.push(message);
     showMessage(message);
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(chat));
-    } catch {
-      status.textContent = '浏览器存储空间不足，本次新消息可能无法在刷新后保留。';
-    }
+    saveChat(chat);
   }
   chat.forEach(showMessage);
   const pet = byId('pet');
@@ -333,7 +415,8 @@
     const image = pendingPhoto;
     if (!text && !image) return;
     status.textContent = '';
-    addMessage({ text, image, mine: true });
+    const sent = { text, image, mine: true };
+    addMessage(sent);
     draft.value = '';
     clearPhoto();
     let reply = '奶龙在听。今天有没有一件小事，让你特别想讲给我听？';
@@ -349,7 +432,7 @@
     }
     const version = chatVersion;
     setTimeout(() => {
-      if (version === chatVersion) addMessage({ text: reply });
+      if (version === chatVersion && chat.includes(sent)) addMessage({ text: reply });
     }, 500);
   });
   draft.addEventListener('keydown', event => {
